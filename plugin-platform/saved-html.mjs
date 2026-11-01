@@ -26,12 +26,16 @@ export const SAVED_HTML_PREFIX =
 // would parse as the tag is always safe; only the plain forms, which every
 // tokenizer reads the same way, are kept. Stripping repeats until nothing
 // changes, so a removal cannot splice a new tag out of its neighbours.
-const META_TAG = /<meta\b(?:[^>"']|"[^"]*(?:"|$)|'[^']*(?:'|$))*(?:>|$)/gi;
+// Comments win the alternation: a '<meta' inside <!-- --> is comment text in
+// the browser, so stripping it must not eat the '-->' and comment out the
+// rest of the page. An unterminated comment runs to EOF, as the browser
+// treats it.
+const COMMENT_OR_META = /<!--[\s\S]*?(?:-->|$)|<meta\b(?:[^>"']|"[^"]*(?:"|$)|'[^']*(?:'|$))*(?:>|$)/gi;
 const PLAIN_META =
   /^<meta\s+(?:charset\s*=\s*"[^"<>&]*"|name\s*=\s*"[^"<>&]*"\s+content\s*=\s*"[^"<>&]*")\s*\/?>$/i;
 
 function stripMeta(html) {
-  return html.replace(META_TAG, (tag) => (PLAIN_META.test(tag) ? tag : ""));
+  return html.replace(COMMENT_OR_META, (m) => (m.startsWith("<!") ? m : PLAIN_META.test(m) ? m : ""));
 }
 
 // The bytes the host saves for files.saveHtml: policy prefix first, then the

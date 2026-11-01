@@ -52,6 +52,13 @@ test('saved page: refresh metas that hide from a naive tag match are stripped', 
   }
 });
 
+test('saved page: a <meta inside an HTML comment stays inside it', () => {
+  // Stripping the meta must not eat the comment's '-->' and comment out the
+  // rest of the report.
+  const page = savedHtmlPage('<!-- <meta http-equiv=refresh --> <p>report</p>');
+  assert.equal(page, SAVED_HTML_PREFIX + '<!-- <meta http-equiv=refresh --> <p>report</p>');
+});
+
 test('saved page: a meta tag cut off by the end of the file is stripped', () => {
   for (const tail of ['<meta http-equiv="refresh" content="0;url=https://evil.example"', '<meta http-equiv=refresh content="0;url=https://evil.example', '<meta']) {
     assert.equal(savedHtmlPage('<p>ok</p>' + tail), SAVED_HTML_PREFIX + '<p>ok</p>', tail);
