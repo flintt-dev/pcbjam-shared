@@ -15,12 +15,16 @@ test('saved page: meta refresh redirects are stripped', () => {
     '<META HTTP-EQUIV=Refresh CONTENT="0; URL=https://evil.example">',
     '<meta content="0;url=https://evil.example" http-equiv = "refresh">',
     "<meta http-equiv='refresh' content='5;url=https://evil.example'>",
+    // Entity-encoded values decode to 'refresh' in the browser; the whole
+    // http-equiv meta class goes, so encodings cannot evade.
+    '<meta http-equiv="ref&#114;esh" content="0;url=https://evil.example">',
+    '<meta http-equiv="default-style" content="x">',
   ];
   const page = savedHtmlPage('<p>ok</p>' + sneaky.join('') + '<p>done</p>');
   assert.equal(page, SAVED_HTML_PREFIX + '<p>ok</p><p>done</p>');
 });
 
-test('saved page: non-refresh meta tags and markup survive untouched', () => {
+test('saved page: charset/name metas and markup survive untouched', () => {
   const html = '<meta charset="utf-8"><meta name="viewport" content="w"><style>p{color:red}</style><p>body</p>';
   assert.equal(savedHtmlPage(html), SAVED_HTML_PREFIX + html);
 });

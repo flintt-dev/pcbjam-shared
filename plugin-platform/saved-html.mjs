@@ -16,13 +16,17 @@
 export const SAVED_HTML_PREFIX =
   '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'none\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; media-src data: blob:; base-uri \'none\'; form-action \'none\'">\n';
 
-// Any <meta> tag carrying http-equiv=refresh goes, whatever else it declares;
-// attribute order and quoting do not matter.
-const META_REFRESH = /<meta\b[^>]*?http-equiv\s*=\s*["']?\s*refresh\b[^>]*>/gi;
+// Every <meta> tag carrying an http-equiv attribute goes: refresh is the one
+// navigation no CSP directive covers, and matching its value literally can be
+// evaded by entity encoding (ref&#114;esh decodes to refresh in the browser),
+// so nothing about the value is trusted. Attribute names cannot be encoded.
+// name= and charset= metas are untouched; http-equiv only ever activates
+// features a static page does not need.
+const META_HTTP_EQUIV = /<meta\b[^>]*?http-equiv\b[^>]*>/gi;
 
 // The bytes the host saves for files.saveHtml: policy prefix first, then the
 // plugin's markup with its one unpoliceable redirect stripped.
 export function savedHtmlPage(html) {
   if (typeof html !== "string") throw new Error("files.saveHtml html must be a string");
-  return SAVED_HTML_PREFIX + html.replace(META_REFRESH, "");
+  return SAVED_HTML_PREFIX + html.replace(META_HTTP_EQUIV, "");
 }

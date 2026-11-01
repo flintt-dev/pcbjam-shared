@@ -152,9 +152,10 @@ export function validateProviderMetadata(
     fail("supported_asset_types must list distinct known asset types");
   if (doc.parts !== undefined) {
     exact(doc.parts, ["endpoint_template"]);
-    // A real path, not a URL: a leading // would resolve to another host under
-    // URL resolution, escaping the provider's confined origins.
-    if (doc.parts.endpoint_template !== undefined && !/^\/(?!\/)\S*$/.test(doc.parts.endpoint_template))
+    // A real path, not a URL: a leading // or /\ would resolve to another
+    // host under URL resolution (WHATWG treats \ as / in special schemes),
+    // escaping the provider's confined origins.
+    if (doc.parts.endpoint_template !== undefined && !/^\/(?![\/\\])\S*$/.test(doc.parts.endpoint_template))
       fail("parts.endpoint_template must be a path starting with a single /");
   }
 

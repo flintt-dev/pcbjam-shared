@@ -49,6 +49,8 @@ test('metadata: schema violations and unsupported auth are refused with a named 
     [metadata({ parts: { endpoint_template: 'v1/parts' } }), /endpoint_template/],
     // '//host/path' is scheme-relative, not a path: it must never resolve off the provider origin.
     [metadata({ parts: { endpoint_template: '//evil.example/{part_id}' } }), /endpoint_template/],
+    // WHATWG treats \ as / in special schemes: /\host escapes the origin too.
+    [metadata({ parts: { endpoint_template: '/\\evil.example/{part_id}' } }), /endpoint_template/],
     [metadata({ parts: { endpoint_template: '/ /space' } }), /endpoint_template/],
     [{ ...metadata({}), auth: undefined }, /missing auth/],
   ];
