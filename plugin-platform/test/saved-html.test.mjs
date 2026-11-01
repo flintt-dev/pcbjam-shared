@@ -39,8 +39,6 @@ test('saved page: refresh metas that hide from a naive tag match are stripped', 
     // '>' inside an earlier quoted value does not end the tag in the browser.
     '<meta content="a>b" http-equiv="refresh" content="0;url=https://evil.example">',
     "<meta name='x>y' http-equiv=refresh content='0;url=https://evil.example'>",
-    // Removing one tag must not splice a new one together out of its neighbours.
-    '<me<meta x>ta http-equiv="refresh" content="0;url=https://evil.example">',
     // A name/content pair only survives in its plain form.
     '<meta name="a" content="b" http-equiv="refresh">',
   ];
@@ -52,11 +50,30 @@ test('saved page: refresh metas that hide from a naive tag match are stripped', 
   }
 });
 
+test('saved page: a <meta inside a tag name stays — it is inert there', () => {
+  // '<me<meta x>ta ...' is one tag named 'me<meta' to a browser ('<' inside a
+  // tag name is literal), so nothing meta ever activates; keep it verbatim.
+  const html = '<me<meta x>ta http-equiv="refresh" content="0;url=https://evil.example">';
+  assert.equal(savedHtmlPage('<p>ok</p>' + html + '<p>done</p>'), SAVED_HTML_PREFIX + '<p>ok</p>' + html + '<p>done</p>');
+});
+
 test('saved page: a <meta inside an HTML comment stays inside it', () => {
   // Stripping the meta must not eat the comment's '-->' and comment out the
   // rest of the report.
   const page = savedHtmlPage('<!-- <meta http-equiv=refresh --> <p>report</p>');
   assert.equal(page, SAVED_HTML_PREFIX + '<!-- <meta http-equiv=refresh --> <p>report</p>');
+});
+
+test('saved page: a fake comment inside markup cannot hide a refresh meta', () => {
+  // '<!--' inside a quoted attribute is attribute text in the browser, not a
+  // comment — the refresh meta after it is live and must be stripped.
+  const sneaky = '<div title="<!--"><meta http-equiv="refresh" content="0;url=https://evil.example">';
+  const page = savedHtmlPage('<p>ok</p>' + sneaky + '<p>done</p>');
+  assert.equal(page, SAVED_HTML_PREFIX + '<p>ok</p><div title="<!--"><p>done</p>');
+  // Same inside raw-text elements: '<!--' in script/style text is not a comment.
+  const script = '<script>"<!--"</script><meta http-equiv=refresh content="0;url=https://evil.example">';
+  const page2 = savedHtmlPage(script + '<p>done</p>');
+  assert.equal(page2, SAVED_HTML_PREFIX + '<script>"<!--"</script><p>done</p>');
 });
 
 test('saved page: a meta tag cut off by the end of the file is stripped', () => {
