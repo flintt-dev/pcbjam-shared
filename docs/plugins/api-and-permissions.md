@@ -79,7 +79,7 @@ feature uses: every extra line is a reason to decline.
 | `ui:project-data` | Disclose plugin results to its custom interface | — |
 | `files:choose` | Read local files you explicitly choose for this plugin | `files.choose`, `files.readText`, `files.close` |
 | `files:save` | Request a text, image or ZIP file download, confirmed by you | `files.save`, `files.saveImage`, `files.saveBundle` |
-| `files:save-html` | Request a web page download, confirmed by you; the page contains this plugin's code, which runs when you open the file | `files.saveHtml` |
+| `files:save-html` | Request a web page download, confirmed by you; the saved page carries no active code | `files.saveHtml` |
 | `editor:place-items` | Request item placement, confirmed by you in the editor | `editor.requestPlacement` |
 | `project:read-info` | Read metadata and file names in the current project | `project.getInfo`, `documents.list` |
 | `documents:read` | Read the current editor document, including all its items and embedded symbols | `documents.getCurrent`, `documents.snapshot`, `documents.poll`, `documents.exportStart`, `documents.exportRead`, `board.geometryStart`, `items.list`, `items.get`, `schematic.symbols`, `schematic.connectivity` |
@@ -331,13 +331,15 @@ File selection, downloads and placement approval use **PCBJam-owned controls**.
   It returns `{status: 'download-requested'}` or `{status: 'cancelled'}`;
   download handoff is not proof of a saved file.
 - `files.saveHtml({name, html})` saves a standalone `.html` page, up to 8 MiB,
-  and needs the separate `files:save-html` permission because the page contains
-  your code. PCBJam writes a policy line before your first byte that blocks all
-  network access from the saved file: inline scripts, inline styles and `data:`
-  or `blob:` images, fonts and media work; CDN scripts, web fonts, remote
-  images, `fetch` and form posts do not. Inline everything. Build the page in
-  logic (`main.js`): a message from `ui.html` to logic is limited to 64,000
-  characters of JSON, including the command name.
+  and needs the separate `files:save-html` permission because the page is your
+  markup with design data inside it. The saved page is static: PCBJam writes a
+  policy line before your first byte that forbids script and everything over
+  the network, and strips `<meta http-equiv="refresh">` because no policy
+  covers it. Inline styles and `data:` or `blob:` images, fonts and media work;
+  scripts, CDN assets, web fonts, remote images, `fetch` and form posts do
+  not. Inline everything. Build the page in logic (`main.js`): a message from
+  `ui.html` to logic is limited to 64,000 characters of JSON, including the
+  command name.
 - `files.saveImage({name, base64})` saves a `.png` of up to 4 MiB under
   `files:save`. Pass plain base64 without a `data:` prefix; bytes that are not
   a PNG are refused.

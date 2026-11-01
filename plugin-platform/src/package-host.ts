@@ -1,6 +1,6 @@
 import {backendPermissions, validateBackendRequest, validateUploadRequest, BACKEND_LIMITS, type BackendEndpoint} from '../backend-contract.mjs';
 const runtimeAsset = (name: string) => new URL(name, import.meta.url).href;
-import { METHODS, LIMITS, LEASED_READS, SAVED_HTML_PREFIX, EXPORT_KINDS, EXPORT_LIMITS, externalUrlAllowed, pngBytes, boundedJSON, type Method, type DocumentAdapter, type PointerStep, type PartSaveRequest } from './package-api';
+import { METHODS, LIMITS, LEASED_READS, savedHtmlPage, EXPORT_KINDS, EXPORT_LIMITS, externalUrlAllowed, pngBytes, boundedJSON, type Method, type DocumentAdapter, type PointerStep, type PartSaveRequest } from './package-api';
 import { storageCall } from './package-storage';
 import { platformConfiguration, platformRequest, platformBytes, verifyText, runtimeAssets } from './package-service';
 export { configurePlatform } from './package-service';
@@ -404,7 +404,7 @@ export async function mountPackagePlugin(container: HTMLElement, options: Packag
             case 'files.saveHtml':
             case 'files.saveImage': {
                 const kind = method === 'files.save' ? 'text' as const : method === 'files.saveHtml' ? 'html' as const : 'image' as const;
-                const bytes = kind === 'image' ? pngBytes(params.base64) : new TextEncoder().encode(kind === 'html' ? SAVED_HTML_PREFIX + params.html : params.text);
+                const bytes = kind === 'image' ? pngBytes(params.base64) : new TextEncoder().encode(kind === 'html' ? savedHtmlPage(params.html) : params.text);
                 if (bytes.length > (kind === 'text' ? LIMITS.exportBytes : kind === 'html' ? LIMITS.htmlBytes : LIMITS.imageBytes))
                     throw new Error('Export exceeds size limit');
                 const result = await options.saveFile!({ name: params.name, kind, bytes, method, ...(kind === 'text' ? { text: params.text } : {}) }, signal);

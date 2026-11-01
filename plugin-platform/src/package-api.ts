@@ -128,13 +128,9 @@ export const LIMITS = Object.freeze({ snapshotBytes: 1024 * 1024, pageItems: 100
     // A hosted authorization this recent is reused for LEASED_READS; the revocation poll runs at the same interval.
     readLeaseMs: 2000,
     uiCommandsPerWindow: 20, uiCommandWindowMs: 10000, uiCommandBytes: 64000, commandTimeoutMs: 120000 });
-/**
- * First bytes of every page saved through files.saveHtml. A saved page runs the plugin's code
- * outside PCBJam, with the user's design inside it; this keeps it from loading or sending anything.
- * A meta policy only governs what follows it, so it must come before any plugin byte. It cannot
- * stop the page navigating itself elsewhere: the consent text says the file contains code.
- */
-export const SAVED_HTML_PREFIX = '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'unsafe-inline\'; style-src \'unsafe-inline\'; img-src data: blob:; font-src data:; media-src data: blob:; base-uri \'none\'; form-action \'none\'">\n';
+// The page files.saveHtml writes lives with the runtime-neutral platform
+// contracts: PCBJam writes its policy bytes first, and the page is static.
+export { SAVED_HTML_PREFIX, savedHtmlPage } from '../saved-html.mjs';
 const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 /** Decode and prove it is a PNG: the name says image, so the bytes must not be a page or a program. */
 export function pngBytes(base64: string): Uint8Array {

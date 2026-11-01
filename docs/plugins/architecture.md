@@ -118,20 +118,23 @@ navigate the frame, so nothing would show it and the navigation watchdog would
 not see it. That would be a silent way out for design data.
 
 Text, JSON, CSV and KiCad files are inert. An HTML page is not: it is plugin
-code, with design data inside it, that runs outside PCBJam when the user opens
-the file. So for `files.saveHtml()`:
-- it has its own permission, and the confirmation says the file contains code;
+markup with design data inside it, outside PCBJam once the user opens the file.
+So for `files.saveHtml()`:
+- it has its own permission, and the confirmation says what the file is;
 - PCBJam, not the plugin, writes the first bytes of the page: a
-  Content-Security-Policy that allows inline script, inline style and embedded
-  images, fonts and media, and nothing over the network. A policy the page
-  declares itself can only tighten ours, because browsers enforce all policies
-  at once.
+  Content-Security-Policy that forbids script and everything over the network,
+  while allowing inline style and embedded images, fonts and media. A policy
+  the page declares itself can only tighten ours, because browsers enforce all
+  policies at once;
+- `<meta http-equiv="refresh">` is stripped, because no policy directive
+  governs it: that is the one way an otherwise static page could still send
+  the user elsewhere with data in the address.
 
 PCBJam's tests open hostile saved pages as real local files in three browser
-engines and check that their own code runs and that no request leaves (fetch,
-XHR, beacon, WebSocket, form post, image, script, stylesheet, frame). What the
-policy can't stop is the page sending the user to another address, for
-instance from a link they click.
+engines and check that no request leaves (fetch, XHR, beacon, WebSocket, form
+post, image, script, stylesheet, frame, scripted navigation, meta refresh).
+What remains is the page sending the user to another address only from a link
+they click — the user's own act on a file they chose to open.
 
 Files are only ever downloaded, never opened by PCBJam: a plugin's page must
 not run on PCBJam's origin. `files.saveImage()` accepts PNG only and checks the
