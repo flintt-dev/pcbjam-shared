@@ -33,3 +33,27 @@ test('saved page: html must be a string', () => {
   assert.throws(() => savedHtmlPage(undefined));
   assert.throws(() => savedHtmlPage(42));
 });
+
+test('saved page: refresh metas that hide from a naive tag match are stripped', () => {
+  const cases = [
+    // '>' inside an earlier quoted value does not end the tag in the browser.
+    '<meta content="a>b" http-equiv="refresh" content="0;url=https://evil.example">',
+    "<meta name='x>y' http-equiv=refresh content='0;url=https://evil.example'>",
+    // Removing one tag must not splice a new one together out of its neighbours.
+    '<me<meta x>ta http-equiv="refresh" content="0;url=https://evil.example">',
+    // A name/content pair only survives in its plain form.
+    '<meta name="a" content="b" http-equiv="refresh">',
+  ];
+  for (const sneaky of cases) {
+    const page = savedHtmlPage('<p>ok</p>' + sneaky + '<p>done</p>');
+    const body = page.slice(SAVED_HTML_PREFIX.length);
+    assert.doesNotMatch(body, /http-equiv[^<]*>/i, sneaky);
+    assert.doesNotMatch(body, /<meta\b[^]*refresh/i, sneaky);
+  }
+});
+
+test('saved page: a meta tag cut off by the end of the file is stripped', () => {
+  for (const tail of ['<meta http-equiv="refresh" content="0;url=https://evil.example"', '<meta http-equiv=refresh content="0;url=https://evil.example', '<meta']) {
+    assert.equal(savedHtmlPage('<p>ok</p>' + tail), SAVED_HTML_PREFIX + '<p>ok</p>', tail);
+  }
+});
