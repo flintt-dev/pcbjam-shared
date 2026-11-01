@@ -28,14 +28,33 @@ const PLAIN_META =
 const RAW_TEXT = new Set(["script", "style", "textarea", "title"]);
 
 // Index just past the tag that opens at i: the first '>' outside a quoted
-// attribute value (a '>' inside quotes is text), or the end of the input.
+// attribute value (a '>' inside quotes is text), or the end of the input. A
+// quote only opens where a browser would open one — right after '=' at the
+// start of a value; inside an unquoted value or an attribute name it is
+// literal text and must not start quoting here either.
 function tagEnd(html, i) {
+  let mode = "before_attr"; // before_attr | attr | expect_value | quoted | unquoted
   let quote = null;
   for (let j = i; j < html.length; j++) {
     const c = html[j];
-    if (quote) { if (c === quote) quote = null; }
-    else if (c === '"' || c === "'") quote = c;
-    else if (c === ">") return j + 1;
+    if (mode === "quoted") {
+      if (c === quote) mode = "before_attr";
+    } else if (mode === "unquoted") {
+      if (c === ">") return j + 1;
+      if (/\s/.test(c)) mode = "before_attr";
+    } else if (mode === "expect_value") {
+      if (c === '"' || c === "'") { quote = c; mode = "quoted"; }
+      else if (c === ">") return j + 1;
+      else if (!/\s/.test(c)) mode = "unquoted";
+    } else if (mode === "attr") {
+      if (c === "=") mode = "expect_value";
+      else if (c === ">") return j + 1;
+      else if (/\s/.test(c)) mode = "before_attr";
+    } else { // before_attr
+      if (c === ">") return j + 1;
+      else if (c === "=") mode = "expect_value";
+      else if (!/\s/.test(c) && c !== "/") mode = "attr";
+    }
   }
   return html.length;
 }

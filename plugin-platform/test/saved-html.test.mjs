@@ -76,6 +76,23 @@ test('saved page: a fake comment inside markup cannot hide a refresh meta', () =
   assert.equal(page2, SAVED_HTML_PREFIX + '<script>"<!--"</script><p>done</p>');
 });
 
+test('saved page: a quote in an unquoted attribute cannot hide a refresh meta', () => {
+  // In an unquoted value '"' is literal text, not a quote start: the meta
+  // after the div's '>' is a live tag and must be stripped.
+  for (const sneaky of [
+    '<div x=a"><meta http-equiv=refresh content="0;url=https://evil.example">',
+    "<div x=a'><meta http-equiv=refresh content=\"0;url=https://evil.example\">",
+    '<div x=a" y=b"><meta http-equiv=refresh content="0;url=https://evil.example">',
+  ]) {
+    const body = savedHtmlPage('<p>ok</p>' + sneaky + '<p>done</p>').slice(SAVED_HTML_PREFIX.length);
+    assert.doesNotMatch(body, /http-equiv/i, sneaky);
+    assert.match(body, /<p>done<\/p>/);
+  }
+  // And the mirror image: the quote still hides '>' where it really is quoted.
+  assert.equal(savedHtmlPage('<div x="a>b"><meta http-equiv=refresh content="0;url=https://evil.example"><p>d</p>'),
+    SAVED_HTML_PREFIX + '<div x="a>b"><p>d</p>');
+});
+
 test('saved page: a meta tag cut off by the end of the file is stripped', () => {
   for (const tail of ['<meta http-equiv="refresh" content="0;url=https://evil.example"', '<meta http-equiv=refresh content="0;url=https://evil.example', '<meta']) {
     assert.equal(savedHtmlPage('<p>ok</p>' + tail), SAVED_HTML_PREFIX + '<p>ok</p>', tail);
