@@ -106,6 +106,10 @@ export function validateProviderMetadata(
   doc: unknown,
   options?: UrlOptions & { allowedAuthTypes?: ("none" | "oauth2")[] }
 ): ProviderMetadata;
+export function checkPanelUrl(
+  panelUrl: unknown,
+  options?: UrlOptions & { panelOrigin?: string; editorOrigin?: string }
+): string;
 export function assetAllowed(url: unknown, originSet: string[], options?: UrlOptions): string;
 export function validatePlaceManifest(
   params: unknown,

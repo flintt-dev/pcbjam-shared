@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PROVIDER_LIMITS, RPC_VERSION, WELL_KNOWN_PATH, assetAllowed, checkPanelHeaders, metadataUrl,
+  PROVIDER_LIMITS, RPC_VERSION, WELL_KNOWN_PATH, assetAllowed, checkPanelHeaders, checkPanelUrl, metadataUrl,
   providerPermissions, providerPolicyText, urlOrigin, validateEnvelope, validateInlineBundle,
   validatePlaceManifest, validateProviderMetadata,
 } from '../remote-provider-contract.mjs';
@@ -47,6 +47,11 @@ test('metadata: schema violations and unsupported auth are refused with a named 
     [metadata({ panel_url: '/panel' }), /not absolute/],
     [metadata({ api_base_url: 'https://localhost/api' }), /Invalid plugin backend policy/],
     [metadata({ parts: { endpoint_template: 'v1/parts' } }), /endpoint_template/],
+    // '//host/path' is scheme-relative, not a path: it must never resolve off the provider origin.
+    [metadata({ parts: { endpoint_template: '//evil.example/{part_id}' } }), /endpoint_template/],
+    // WHATWG treats \ as / in special schemes: /\host escapes the origin too.
+    [metadata({ parts: { endpoint_template: '/\\evil.example/{part_id}' } }), /endpoint_template/],
+    [metadata({ parts: { endpoint_template: '/ /space' } }), /endpoint_template/],
     [{ ...metadata({}), auth: undefined }, /missing auth/],
   ];
   for (const [doc, pattern] of cases) assert.throws(() => validateProviderMetadata(doc), pattern, JSON.stringify(doc));
@@ -61,6 +66,19 @@ test('urls: loopback http is only accepted when a fixture opts in', () => {
   assert.throws(() => urlOrigin('http://10.0.0.5/panel', { allowInsecureLocalhost: true }), /must use https/);
   assert.equal(urlOrigin(ORIGIN + '/x?y=1'), ORIGIN);
   assert.throws(() => urlOrigin(ORIGIN + '/x#frag'), /fragment/);
+});
+
+test('panel: the embedded URL must be a real https origin that is not the editor\'s', () => {
+  const editor = 'https://app.pcbjam.example';
+  assert.equal(checkPanelUrl(ORIGIN + '/panel', { panelOrigin: ORIGIN, editorOrigin: editor }), ORIGIN);
+  assert.throws(() => checkPanelUrl(editor + '/panel', { panelOrigin: editor, editorOrigin: editor }), /editor's origin/);
+  assert.throws(() => checkPanelUrl('https://other.example/panel', { panelOrigin: ORIGIN, editorOrigin: editor }), /declared origin/);
+  assert.throws(() => checkPanelUrl('http://kicad.acme-parts.example/panel', { panelOrigin: 'http://kicad.acme-parts.example', editorOrigin: editor }), /must use https/);
+  assert.throws(() => checkPanelUrl('https://kicad.acme-parts.example:8443/p', { editorOrigin: editor }), /default https port/);
+  assert.throws(() => checkPanelUrl('https://user:pw@kicad.acme-parts.example/p', { editorOrigin: editor }), /credentials/);
+  // Dev fixtures: a loopback editor still refuses its own origin, but http panel hosts pass.
+  assert.equal(checkPanelUrl('http://127.0.0.1:4400/panel', { panelOrigin: 'http://127.0.0.1:4400', editorOrigin: 'http://127.0.0.1:5173', allowInsecureLocalhost: true }), 'http://127.0.0.1:4400');
+  assert.throws(() => checkPanelUrl('http://127.0.0.1:5173/panel', { panelOrigin: 'http://127.0.0.1:5173', editorOrigin: 'http://127.0.0.1:5173', allowInsecureLocalhost: true }), /editor's origin/);
 });
 
 test('assets: only the panel or API origin may serve downloads', () => {

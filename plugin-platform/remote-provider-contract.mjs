@@ -152,8 +152,11 @@ export function validateProviderMetadata(
     fail("supported_asset_types must list distinct known asset types");
   if (doc.parts !== undefined) {
     exact(doc.parts, ["endpoint_template"]);
-    if (doc.parts.endpoint_template !== undefined && !/^\/\S*$/.test(doc.parts.endpoint_template))
-      fail("parts.endpoint_template must start with /");
+    // A real path, not a URL: a leading // or /\ would resolve to another
+    // host under URL resolution (WHATWG treats \ as / in special schemes),
+    // escaping the provider's confined origins.
+    if (doc.parts.endpoint_template !== undefined && !/^\/(?![\/\\])\S*$/.test(doc.parts.endpoint_template))
+      fail("parts.endpoint_template must be a path starting with a single /");
   }
 
   return {
@@ -176,6 +179,21 @@ export function validateProviderMetadata(
     privacyUrl: doc.privacy_url,
     originSet: [...new Set([panelOrigin, apiOrigin])].sort(),
   };
+}
+
+// The panel iframe the editor embeds. Its sandbox grants allow-same-origin,
+// so a panel page on the editor's own origin would escape the sandbox entirely
+// — full access to the parent document, storage and session. The URL is the
+// platform activation's word, not a trusted value: it must parse under the
+// same rules as every other provider URL, resolve to the declared panelOrigin,
+// and differ from the editor's origin. Returns the verified origin.
+export function checkPanelUrl(panelUrl, { panelOrigin, editorOrigin, allowInsecureLocalhost = false } = {}) {
+  const origin = urlOrigin(panelUrl, { allowInsecureLocalhost });
+  if (panelOrigin !== undefined && origin !== panelOrigin)
+    fail("Remote provider panel URL is not on its declared origin");
+  if (editorOrigin !== undefined && origin === editorOrigin)
+    fail("Remote provider panel must not run on the editor's origin");
+  return origin;
 }
 
 // Same rule as the desktop client: assets may only come from the panel's or
